@@ -1,0 +1,1 @@
+window.JELIX_CONFIG={brand:{company:'JELIX',legalName:'JELIX Systems',mark:'JX',tagline:'Operational software for the physical world.'},products:{jworks:{name:'JWorks',url:'https://jworks.jeffmyall6.workers.dev'},trace:{name:'TRACE',url:''}}};

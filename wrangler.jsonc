@@ -1,5 +1,25 @@
 {
- "name":"jelix", "main":"src/worker.js", "compatibility_date":"2026-10-06",
- "assets":{"directory":".","binding":"ASSETS","run_worker_first":["/api/*","/owner-hq.html","/owner-hq.js","/quotes.js","/owner-hq.css","/v3.html","/v3.js"]},
- "d1_databases":[{"binding":"DB","database_name":"jelix-production","database_id":"67f72b48-316f-43d1-bf85-b597581fa417"}]
+  "name": "jelix",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-06",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*",
+      "/owner-hq.html",
+      "/owner-hq.js",
+      "/owner-hq.css",
+      "/quotes.js",
+      "/v3.html",
+      "/v3.js"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jelix-production",
+      "database_id": "67f72b48-316f-43d1-bf85-b597581fa417"
+    }
+  ]
 }

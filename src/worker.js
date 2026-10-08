@@ -1,29 +1,58 @@
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const err=(msg,status)=>json({error:msg},status);
 const kinds=new Set(['lead','customer','quote','milestone','campaign','release','task','product','idea','integration','subscription','entitlement','ticket','onboarding','invoice','setting']);
+const encoder=new TextEncoder();
+const cookieName='jelix_owner_session';
+function b64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+function unb64(str){return Uint8Array.from(atob(str.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-str.length%4)%4)),c=>c.charCodeAt(0))}
+async function hmac(key,value){const k=await crypto.subtle.importKey('raw',encoder.encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64url(new Uint8Array(await crypto.subtle.sign('HMAC',k,encoder.encode(value))))}
+async function passwordDigest(password,salt){const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);return b64url(new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt:encoder.encode(salt),iterations:310000,hash:'SHA-256'},key,256)))}
+function constantEqual(a,b){if(typeof a!=='string'||typeof b!=='string')return false;let diff=a.length^b.length;for(let i=0;i<Math.max(a.length,b.length);i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return diff===0}
+function secureHeaders(extra={}){return {'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...extra}}
 async function auth(req,env){
- const token=req.headers.get('Cf-Access-Jwt-Assertion');
- if(!token||!env.ACCESS_TEAM_DOMAIN||!env.ACCESS_AUD||!env.OWNER_EMAIL)return null;
- try{
- const [a,b,c]=token.split('.');if(!a||!b||!c)return null;
- const decode=x=>JSON.parse(atob(x.replace(/-/g,'+').replace(/_/g,'/')));
- const head=decode(a),claims=decode(b);
- if(head.alg!=='RS256'||!head.kid||claims.aud!==env.ACCESS_AUD&&!(Array.isArray(claims.aud)&&claims.aud.includes(env.ACCESS_AUD)))return null;
- if(claims.iss!==`https://${env.ACCESS_TEAM_DOMAIN}`||claims.exp<=Date.now()/1000||!claims.email||claims.email.toLowerCase()!==env.OWNER_EMAIL.toLowerCase())return null;
- const keys=await fetch(`https://${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`).then(r=>r.json());
- const key=keys.keys.find(k=>k.kid===head.kid);if(!key)return null;
- const publicKey=await crypto.subtle.importKey('jwk',key,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
- const sig=Uint8Array.from(atob(c.replace(/-/g,'+').replace(/_/g,'/')),v=>v.charCodeAt(0));
- const ok=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',publicKey,sig,new TextEncoder().encode(a+'.'+b));
- return ok?claims.email:null;
- }catch{return null;}
+ if(!env.SESSION_SECRET||!env.OWNER_EMAIL)return null;
+ const match=(req.headers.get('Cookie')||'').match(/(?:^|;\s*)jelix_owner_session=([^;]+)/);if(!match)return null;
+ try{const [payload,sig]=match[1].split('.');if(!payload||!sig||!constantEqual(sig,await hmac(env.SESSION_SECRET,payload)))return null;
+ const session=JSON.parse(new TextDecoder().decode(unb64(payload)));
+ if(session.exp<Date.now()||session.exp>Date.now()+86400000||session.email.toLowerCase()!==env.OWNER_EMAIL.toLowerCase())return null;
+ return session.email;
+ }catch{return null}
+}
+const protectedFiles=new Set(['/owner-hq.html','/owner-hq.js','/owner-hq.css','/quotes.js','/v3.html','/v3.js']);
+async function login(req,env){
+ if(!env.DB||!env.OWNER_EMAIL||!env.OWNER_PASSWORD_HASH||!env.OWNER_PASSWORD_SALT||!env.SESSION_SECRET)return err('Administrator login is not configured.',503);
+ let body;try{body=await req.json()}catch{return err('Invalid request',400)}
+ const email=String(body.email||'').trim().toLowerCase(), password=String(body.password||'');
+ if(password.length>1024||email.length>254)return err('Invalid credentials',401);
+ const ip=req.headers.get('CF-Connecting-IP')||'unknown';
+ const ipKey=b64url(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(ip+'|'+env.SESSION_SECRET))));
+ const windowStart=Date.now()-15*60*1000;
+ await env.DB.prepare('DELETE FROM login_attempts WHERE at < ?').bind(windowStart).run();
+ const row=await env.DB.prepare('SELECT COUNT(*) AS attempts FROM login_attempts WHERE ip_hash=? AND at>=?').bind(ipKey,windowStart).first();
+ if(row.attempts>=10)return err('Too many attempts. Try again in 15 minutes.',429);
+ const digest=await passwordDigest(password,env.OWNER_PASSWORD_SALT);
+ if(email!==env.OWNER_EMAIL.toLowerCase()||!constantEqual(digest,env.OWNER_PASSWORD_HASH)){
+  await env.DB.prepare('INSERT INTO login_attempts(ip_hash,at) VALUES (?,?)').bind(ipKey,Date.now()).run();
+  return err('Invalid email or password',401);
+ }
+ await env.DB.prepare('DELETE FROM login_attempts WHERE ip_hash=?').bind(ipKey).run();
+ const payload=b64url(encoder.encode(JSON.stringify({email:env.OWNER_EMAIL,exp:Date.now()+8*60*60*1000,nonce:crypto.randomUUID()})));
+ const sig=await hmac(env.SESSION_SECRET,payload);
+ return new Response(JSON.stringify({ok:true,email:env.OWNER_EMAIL}),{headers:secureHeaders({'content-type':'application/json','set-cookie':`${cookieName}=${payload}.${sig}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=28800`})});
 }
 async function log(db,actor,action,kind,id){await db.prepare('INSERT INTO audit (id,actor,action,kind,record_id,at) VALUES (?,?,?,?,?,?)').bind(crypto.randomUUID(),actor,action,kind,id,new Date().toISOString()).run()}
 export default {async fetch(req,env){
  const url=new URL(req.url),path=url.pathname;
- if(path==='/api/health')return json({service:'JELIX v3',status:'configured',database:!!env.DB,authentication:'Cloudflare Access JWT required'});
- if(!path.startsWith('/api/')&&!['/owner-hq.html','/owner-hq.js','/owner-hq.css','/quotes.js','/v3.html','/v3.js'].includes(path))return env.ASSETS.fetch(req);
- const actor=await auth(req,env);if(!actor)return path.startsWith('/api/')?err('Owner access required. Configure Cloudflare Access and OWNER_EMAIL.',401):new Response('Owner access required. Configure Cloudflare Access.',{status:401,headers:{'content-type':'text/plain'}});
+ if(path==='/api/health')return json({service:'JELIX v3',status:'configured',database:!!env.DB,authentication:'Built-in administrator session'});
+ if(path==='/api/auth/login'&&req.method==='POST')return login(req,env);
+ if(path==='/api/auth/logout'&&req.method==='POST')return new Response(JSON.stringify({ok:true}),{headers:secureHeaders({'content-type':'application/json','set-cookie':`${cookieName}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`})});
+ if(!path.startsWith('/api/')&&!protectedFiles.has(path))return env.ASSETS.fetch(req);
+ const actor=await auth(req,env);
+ if(!actor){if(path.startsWith('/api/'))return err('Administrator login required',401);
+ return Response.redirect(new URL('/owner-login.html',req.url).toString(),302)}
+ if(path.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
+  const origin=req.headers.get('Origin');if(!origin||origin!==url.origin)return err('Invalid request origin',403);
+ }
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(req);
  if(!env.DB)return err('D1 database not configured. See SETUP.md.',503);
  if(path==='/api/me')return json({email:actor,role:'owner'});

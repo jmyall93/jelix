@@ -1,19 +1,28 @@
-# JELIX v3.0 — deployment and security checklist
+# JELIX v3.1 — Built-in Owner HQ login
 
-**Do not deploy as an open public Owner HQ.** The public site can remain accessible, but Owner HQ and its JavaScript/CSS must be protected.
+## Deploy
+1. Replace the repository contents with this package (including the new `public/` directory) and commit to GitHub `main`. Do **not** upload secrets or a `.env` file.
+2. In Cloudflare D1 `jelix-production` → Console, run the existing `migrations/0001_init.sql` if not already applied. Then run `migrations/0002_login_attempts.sql` (creates login rate-limit table).
+3. In Cloudflare Workers → `jelix` → Settings → Variables and Secrets, add these four values. **Use Secret type for all except OWNER_EMAIL**:
+   - `OWNER_EMAIL`: your administrator email address.
+   - `OWNER_PASSWORD_SALT`: a random 32-byte hexadecimal value.
+   - `OWNER_PASSWORD_HASH`: PBKDF2-SHA256 password digest, 310,000 iterations, 32 bytes, base64url encoded.
+   - `SESSION_SECRET`: a distinct random 32-byte hexadecimal value.
+4. Generate the three random values locally in Node.js (Windows PowerShell with Node installed):
 
-1. In Cloudflare, create a D1 database called `jelix-platform`. Copy its database ID into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
-2. Run `npx wrangler d1 migrations apply jelix-platform --remote` from the project root (install Wrangler locally if needed). Keep a backup before future migrations.
-3. Configure Cloudflare Zero Trust Access with an **application protecting** `/owner-hq.html`, `/v3.html`, `/v3.js`, `/owner-hq.js`, `/quotes.js`, `/owner-hq.css`, and `/api/*` (or use a dedicated private subdomain covering all Owner HQ assets). Require MFA and allow only the owner's email. Do not rely on the UI alone.
-4. Obtain the Access application AUD tag and your Access team domain, such as `example.cloudflareaccess.com`. Configure Worker environment variables `ACCESS_AUD`, `ACCESS_TEAM_DOMAIN`, and `OWNER_EMAIL` (case-insensitive email matching). The Worker validates RS256 JWT signatures using the Access JWKS, plus issuer, audience, expiry and email. Do not use public API routes for sensitive data.
-5. Deploy with `npx wrangler deploy`. Check `/api/health` then sign in through Access and open `/v3.html`. Check unauthenticated API access is rejected, and verify D1 create/update/delete operations.
-6. Optional: add `GITHUB_TOKEN` (read-only fine-grained repository token) and `GITHUB_REPO` (`owner/repo`), or `CF_API_TOKEN` (read-only Workers permission), `CF_ACCOUNT_ID`, `CF_WORKER_NAME`. These are Worker secrets/variables, never frontend code. GitHub and Cloudflare endpoints are available for inspection, not automatic sync.
-7. Do not enable customer logins, payments, email sending or production industrial telemetry until the appropriate identity, payment and ingestion services have been implemented and independently tested.
+```powershell
+node -e "const c=require('node:crypto'); const p=process.argv[1]; if(!p||p.length<16)throw Error('Use a password of at least 16 characters'); const salt=c.randomBytes(32).toString('hex'); const hash=c.pbkdf2Sync(p,salt,310000,32,'sha256').toString('base64url'); console.log('OWNER_PASSWORD_SALT='+salt+'\nOWNER_PASSWORD_HASH='+hash+'\nSESSION_SECRET='+c.randomBytes(32).toString('hex'))" "YOUR_LONG_UNIQUE_PASSWORD"
+```
 
-## Security and limitations
+**Warning:** entering a password as a shell argument may leave it in local shell history/process logs. Prefer running the command on your trusted computer and clear command history, or adapt it to prompt for a password interactively. Never paste the password or secret values into ChatGPT, GitHub, or screenshots.
 
-- v3 is an **owner-only foundation**, not yet a full customer SSO, invoicing, Stripe or telemetry platform. The classic Owner HQ still uses browser-local prototype records; the new v3 Business Operations screen uses D1.
-- Quote Builder drafts still use browser localStorage. Save a PDF and track its lifecycle as a v3 quote record. Quote totals are calculated client-side; they must be independently validated before invoicing.
-- Only the owner is allowed by the current API. Customers do not have access to the owner APIs. Organization memberships and entitlements are record models, not an implemented enforcement layer.
-- GitHub/Cloudflare API access requires secrets and the proper read-only scopes; no integration is preconnected.
-- This is an engineering preview: review security, backups, data privacy, tax, contracts, billing and production testing before commercial use.
+5. Deploy Worker from GitHub. Open `https://YOUR-WORKER.workers.dev/owner-login.html` and sign in. Existing `owner-hq.html` and `v3.html` redirect unauthenticated visitors to login.
+6. Test sign-out, bad password, direct unauthenticated API access, and that `/src/worker.js`, `/migrations/0001_init.sql`, `/.git/config`, and `/wrangler.jsonc` return 404 (or no sensitive content).
+
+## Notes
+- Built-in login is **owner-only**, not a customer identity system. The cookie is HttpOnly, Secure, SameSite=Strict, signed with HMAC and expires after 8 hours. Rotate `SESSION_SECRET` to invalidate all existing sessions.
+- Login attempts are limited to 10 failed attempts per source IP per rolling 15 minutes (using D1); consider Cloudflare WAF/rate limiting for additional abuse protection.
+- Static assets are now published only from `public/`; Worker source, SQL migrations, `.git`, and config are excluded.
+- Existing classic Owner HQ widgets still save demo data to localStorage; v3 Business Operations uses D1. Do not store sensitive customer data until access controls have been reviewed and tested.
+- `owner-login.html` and its JS are public by design; Owner HQ and API routes are protected by the Worker.
+- For production, consider MFA, recovery procedures, revocable server-side sessions, audit logging for sign-ins, security review and customer-specific authentication.

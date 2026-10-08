@@ -1,22 +1,7 @@
-# JELIX Parent Platform v1.1
+# JELIX v3.0 — Business Platform (owner-only foundation)
 
-Multi-page corporate website + JELIX ID portal concept + Owner HQ.
+Built directly on v2.1. Retains the public corporate site, classic Owner HQ and quote builder. Adds a D1-backed business operations console (`v3.html`) for leads, quotes, customers, onboarding, subscriptions, entitlements, invoices, tasks, milestones, campaigns, releases and support records; conversion from lead to customer; an audit log; optional read-only GitHub and Cloudflare API routes; and Cloudflare Access JWT verification.
 
-## Public pages
-- index.html
-- products.html
-- platform.html
-- about.html
-- contact.html
-- portal.html
+**Deployment is not plug-and-play**: complete `SETUP.md` to provision D1 and Cloudflare Access before uploading real customer data. The new business console is protected and requires configuration. Payments, real customer SSO, automated licensing, and industrial data ingestion are NOT implemented.
 
-## Owner HQ
-Includes Command Center, Products, Customers, Releases, Platform Health, JELIX ID, Marketing, Business Plan, Milestones and Company Settings.
-
-## Cloudflare
-Workers static assets config is included in `wrangler.jsonc`. Deploy command: `npx wrangler deploy`.
-
-Authentication, forms, health, customer and commercial data remain prototype/local UI until backend services are connected.
-
-
-v2.1 adds an Owner HQ quote builder (editable CAD rates, tiered PLC/BMS integration, printable quote) and read-only integration manuals. Quote drafts use localStorage and are not shared between devices. Authentication and server-side persistence remain future work.
+Existing `owner-hq.html` remains as a legacy local-data prototype. Use the new Business Operations link for D1-backed records. Branding remains provisional.

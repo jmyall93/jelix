@@ -1,5 +1,5 @@
 {
  "name":"jelix", "main":"src/worker.js", "compatibility_date":"2026-10-06",
  "assets":{"directory":".","binding":"ASSETS","run_worker_first":["/api/*","/owner-hq.html","/owner-hq.js","/quotes.js","/owner-hq.css","/v3.html","/v3.js"]},
- "d1_databases":[{"binding":"DB","database_name":"jelix-platform","database_id":"REPLACE_WITH_D1_DATABASE_ID"}]
+ "d1_databases":[{"binding":"DB","database_name":"jelix-platform","database_id":"67f72b48-316f-43d1-bf85-b597581fa417"}]
 }

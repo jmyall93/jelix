@@ -1,28 +1,15 @@
-# JELIX v3.1 — Built-in Owner HQ login
+# JELIX v3.2 — Development Mode (authentication optional)
 
-## Deploy
-1. Replace the repository contents with this package (including the new `public/` directory) and commit to GitHub `main`. Do **not** upload secrets or a `.env` file.
-2. In Cloudflare D1 `jelix-production` → Console, run the existing `migrations/0001_init.sql` if not already applied. Then run `migrations/0002_login_attempts.sql` (creates login rate-limit table).
-3. In Cloudflare Workers → `jelix` → Settings → Variables and Secrets, add these four values. **Use Secret type for all except OWNER_EMAIL**:
-   - `OWNER_EMAIL`: your administrator email address.
-   - `OWNER_PASSWORD_SALT`: a random 32-byte hexadecimal value.
-   - `OWNER_PASSWORD_HASH`: PBKDF2-SHA256 password digest, 310,000 iterations, 32 bytes, base64url encoded.
-   - `SESSION_SECRET`: a distinct random 32-byte hexadecimal value.
-4. Generate the three random values locally in Node.js (Windows PowerShell with Node installed):
+## Quick setup (testing only)
+1. Upload this package to your GitHub `jmyall93/jelix` repository, preserving the `public/`, `src/`, and `migrations/` folders. Commit to `main`.
+2. In Cloudflare Workers & Pages → `jelix` → Settings → Variables and Secrets, add a **Text** variable named `DEVELOPMENT_MODE` with value **`true`** (lowercase). Save and deploy the latest version if prompted.
+3. Open `/owner-hq.html` directly. No username, password, salt, hash or session secret is needed.
+4. For D1-backed features, apply `migrations/0001_init.sql` in the `jelix-production` D1 Console if not already applied.
 
-```powershell
-node -e "const c=require('node:crypto'); const p=process.argv[1]; if(!p||p.length<16)throw Error('Use a password of at least 16 characters'); const salt=c.randomBytes(32).toString('hex'); const hash=c.pbkdf2Sync(p,salt,310000,32,'sha256').toString('base64url'); console.log('OWNER_PASSWORD_SALT='+salt+'\nOWNER_PASSWORD_HASH='+hash+'\nSESSION_SECRET='+c.randomBytes(32).toString('hex'))" "YOUR_LONG_UNIQUE_PASSWORD"
-```
+## IMPORTANT: PUBLIC ACCESS
+With `DEVELOPMENT_MODE=true`, **anyone who knows the site address can access Owner HQ and its database APIs and can read, create, change or delete records**. Do not enter real customer data, financial information, tokens or sensitive information. Use only fabricated test records. Do not advertise or distribute the URL.
 
-**Warning:** entering a password as a shell argument may leave it in local shell history/process logs. Prefer running the command on your trusted computer and clear command history, or adapt it to prompt for a password interactively. Never paste the password or secret values into ChatGPT, GitHub, or screenshots.
+## Before going live
+Set `DEVELOPMENT_MODE=false` (or remove the variable) and redeploy. The existing built-in Owner HQ login then becomes mandatory again, requiring `OWNER_EMAIL`, `OWNER_PASSWORD_SALT`, `OWNER_PASSWORD_HASH`, and `SESSION_SECRET` configured per the v3.1 setup. Confirm unauthenticated `/api/records/customer` returns HTTP 401 and `/owner-hq.html` redirects to `/owner-login.html`. Complete a security review before using real data.
 
-5. Deploy Worker from GitHub. Open `https://YOUR-WORKER.workers.dev/owner-login.html` and sign in. Existing `owner-hq.html` and `v3.html` redirect unauthenticated visitors to login.
-6. Test sign-out, bad password, direct unauthenticated API access, and that `/src/worker.js`, `/migrations/0001_init.sql`, `/.git/config`, and `/wrangler.jsonc` return 404 (or no sensitive content).
-
-## Notes
-- Built-in login is **owner-only**, not a customer identity system. The cookie is HttpOnly, Secure, SameSite=Strict, signed with HMAC and expires after 8 hours. Rotate `SESSION_SECRET` to invalidate all existing sessions.
-- Login attempts are limited to 10 failed attempts per source IP per rolling 15 minutes (using D1); consider Cloudflare WAF/rate limiting for additional abuse protection.
-- Static assets are now published only from `public/`; Worker source, SQL migrations, `.git`, and config are excluded.
-- Existing classic Owner HQ widgets still save demo data to localStorage; v3 Business Operations uses D1. Do not store sensitive customer data until access controls have been reviewed and tested.
-- `owner-login.html` and its JS are public by design; Owner HQ and API routes are protected by the Worker.
-- For production, consider MFA, recovery procedures, revocable server-side sessions, audit logging for sign-ins, security review and customer-specific authentication.
+This package keeps `assets.directory` set to `./public` so `.git`, Worker source, migrations and Wrangler configuration are not uploaded as public static assets.

@@ -43,14 +43,16 @@ async function login(req,env){
 async function log(db,actor,action,kind,id){await db.prepare('INSERT INTO audit (id,actor,action,kind,record_id,at) VALUES (?,?,?,?,?,?)').bind(crypto.randomUUID(),actor,action,kind,id,new Date().toISOString()).run()}
 export default {async fetch(req,env){
  const url=new URL(req.url),path=url.pathname;
- if(path==='/api/health')return json({service:'JELIX v3',status:'configured',database:!!env.DB,authentication:'Built-in administrator session'});
+ const devMode=env.DEVELOPMENT_MODE==='true';
+ if(devMode&&path==='/owner-login.html')return Response.redirect(new URL('/owner-hq.html',req.url).toString(),302);
+ if(path==='/api/health')return json({service:'JELIX v3',status:'configured',database:!!env.DB,authentication:devMode?'DEVELOPMENT MODE - NO AUTHENTICATION':'Built-in administrator session'});
  if(path==='/api/auth/login'&&req.method==='POST')return login(req,env);
  if(path==='/api/auth/logout'&&req.method==='POST')return new Response(JSON.stringify({ok:true}),{headers:secureHeaders({'content-type':'application/json','set-cookie':`${cookieName}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`})});
  if(!path.startsWith('/api/')&&!protectedFiles.has(path))return env.ASSETS.fetch(req);
- const actor=await auth(req,env);
+ const actor=devMode?'development-owner':await auth(req,env);
  if(!actor){if(path.startsWith('/api/'))return err('Administrator login required',401);
  return Response.redirect(new URL('/owner-login.html',req.url).toString(),302)}
- if(path.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
+ if(!devMode&&path.startsWith('/api/')&&!['GET','HEAD','OPTIONS'].includes(req.method)){
   const origin=req.headers.get('Origin');if(!origin||origin!==url.origin)return err('Invalid request origin',403);
  }
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(req);

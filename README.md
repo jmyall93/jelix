@@ -17,3 +17,6 @@ Includes Command Center, Products, Customers, Releases, Platform Health, JELIX I
 Workers static assets config is included in `wrangler.jsonc`. Deploy command: `npx wrangler deploy`.
 
 Authentication, forms, health, customer and commercial data remain prototype/local UI until backend services are connected.
+
+
+v2.1 adds an Owner HQ quote builder (editable CAD rates, tiered PLC/BMS integration, printable quote) and read-only integration manuals. Quote drafts use localStorage and are not shared between devices. Authentication and server-side persistence remain future work.

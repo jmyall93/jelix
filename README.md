@@ -1,21 +1,19 @@
-# JELIX Parent Platform — v1.0 Foundation
+# JELIX Parent Platform v1.1
 
-Built from the original JELIX Corporate Website v0.1.
+Multi-page corporate website + JELIX ID portal concept + Owner HQ.
 
-## Included
-- Refined public JELIX corporate/product website
-- JELIX ID-style shared access gateway concept
-- Owner HQ private control-plane prototype
-- Portfolio Command Center
-- Products, customers, releases, platform health, identity architecture and Brand Lab views
-- Central `config.js` for parent-brand/product configuration so the working JELIX name can be replaced later
-- Existing JWorks deployment link preserved
+## Public pages
+- index.html
+- products.html
+- platform.html
+- about.html
+- contact.html
+- portal.html
 
-## Important prototype note
-Owner HQ is a front-end prototype in this build. It does **not** provide production authentication or authorization yet. Do not expose Owner HQ as a secure administration system until server-side identity/session controls are implemented.
+## Owner HQ
+Includes Command Center, Products, Customers, Releases, Platform Health, JELIX ID, Marketing, Business Plan, Milestones and Company Settings.
 
-## Run locally
-Open `index.html` directly. Use `owner-hq.html` for the Owner HQ prototype.
+## Cloudflare
+Workers static assets config is included in `wrangler.jsonc`. Deploy command: `npx wrangler deploy`.
 
-## Deploy
-Static deployment compatible with Cloudflare Pages. No build command required.
+Authentication, forms, health, customer and commercial data remain prototype/local UI until backend services are connected.

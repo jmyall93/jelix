@@ -1,3 +1,4 @@
+
 {
   "name": "jelix",
   "main": "src/worker.js",
@@ -18,15 +19,15 @@
       "/quote-intelligence.css"
     ]
   },
- "d1_databases": [
-  {
-    "binding": "DB",
-    "database_name": "jelix-production",
-    "database_id": "67f72b48-316f-43d1-bf85-b597581fa417"
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "jelix-production",
+      "database_id": "67f72b48-316f-43d1-bf85-b597581fa417"
+    }
+  ],
+  "vars": {
+    "DEVELOPMENT_MODE": "true"
   }
-],
-"vars": {
-  "DEVELOPMENT_MODE": "true"
 }
-  ]
-}
+

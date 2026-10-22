@@ -12,7 +12,10 @@
       "/owner-hq.css",
       "/quotes.js",
       "/v3.html",
-      "/v3.js"
+      "/v3.js",
+      "/quote-intelligence.html",
+      "/quote-intelligence.js",
+      "/quote-intelligence.css"
     ]
   },
   "d1_databases": [

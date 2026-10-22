@@ -18,7 +18,7 @@ async function auth(req,env){
  return session.email;
  }catch{return null}
 }
-const protectedFiles=new Set(['/owner-hq.html','/owner-hq.js','/owner-hq.css','/quotes.js','/v3.html','/v3.js']);
+const protectedFiles=new Set(['/owner-hq.html','/owner-hq.js','/owner-hq.css','/quotes.js','/v3.html','/v3.js','/quote-intelligence.html','/quote-intelligence.js','/quote-intelligence.css']);
 async function login(req,env){
  if(!env.DB||!env.OWNER_EMAIL||!env.OWNER_PASSWORD_HASH||!env.OWNER_PASSWORD_SALT||!env.SESSION_SECRET)return err('Administrator login is not configured.',503);
  let body;try{body=await req.json()}catch{return err('Invalid request',400)}
@@ -45,7 +45,7 @@ export default {async fetch(req,env){
  const url=new URL(req.url),path=url.pathname;
  const devMode=env.DEVELOPMENT_MODE==='true';
  if(devMode&&path==='/owner-login.html')return Response.redirect(new URL('/owner-hq.html',req.url).toString(),302);
- if(path==='/api/health')return json({service:'JELIX v3',status:'configured',database:!!env.DB,authentication:devMode?'DEVELOPMENT MODE - NO AUTHENTICATION':'Built-in administrator session'});
+ if(path==='/api/health')return json({service:'REYLEX HQ v5',status:'configured',database:!!env.DB,authentication:devMode?'DEVELOPMENT MODE - NO AUTHENTICATION':'Built-in administrator session'});
  if(path==='/api/auth/login'&&req.method==='POST')return login(req,env);
  if(path==='/api/auth/logout'&&req.method==='POST')return new Response(JSON.stringify({ok:true}),{headers:secureHeaders({'content-type':'application/json','set-cookie':`${cookieName}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`})});
  if(!path.startsWith('/api/')&&!protectedFiles.has(path))return env.ASSETS.fetch(req);
@@ -62,7 +62,7 @@ export default {async fetch(req,env){
  if(path==='/api/integrations'&&req.method==='GET')return json({github:!!env.GITHUB_TOKEN,cloudflare:!!env.CF_API_TOKEN,billing:'not connected',product_telemetry:'not connected'});
  if(path==='/api/github'&&req.method==='GET'){
  if(!env.GITHUB_TOKEN||!env.GITHUB_REPO)return err('GitHub integration not configured',503);
- const r=await fetch('https://api.github.com/repos/'+env.GITHUB_REPO+'/releases?per_page=15',{headers:{Authorization:'Bearer '+env.GITHUB_TOKEN,'User-Agent':'JELIX-OwnerHQ','Accept':'application/vnd.github+json'}});
+ const r=await fetch('https://api.github.com/repos/'+env.GITHUB_REPO+'/releases?per_page=15',{headers:{Authorization:'Bearer '+env.GITHUB_TOKEN,'User-Agent':'REYLEX-OwnerHQ','Accept':'application/vnd.github+json'}});
  return json({status:r.status,data:r.ok?await r.json():null},r.ok?200:502);
  }
  if(path==='/api/cloudflare'&&req.method==='GET'){

@@ -1,0 +1,9 @@
+{
+  "product": "TRACE",
+  "source_archive": "v2.2.5.zip",
+  "files": [
+    "v2.2.5/package.json",
+    "v2.2.5/README.md",
+    "v2.2.5/wrangler.toml"
+  ]
+}

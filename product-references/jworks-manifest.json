@@ -1,0 +1,10 @@
+{
+  "product": "JWorks",
+  "source_archive": "jworks--v13.4.0(1).zip",
+  "files": [
+    "jworks--v13.4.0/ai-worker/wrangler.jsonc",
+    "jworks--v13.4.0/package.json",
+    "jworks--v13.4.0/README.md",
+    "jworks--v13.4.0/wrangler.jsonc"
+  ]
+}

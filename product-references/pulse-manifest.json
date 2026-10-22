@@ -1,0 +1,9 @@
+{
+  "product": "PULSE",
+  "source_archive": "v0.6(1).zip",
+  "files": [
+    "v0.6/package.json",
+    "v0.6/README.md",
+    "v0.6/wrangler.jsonc"
+  ]
+}
